@@ -19,13 +19,6 @@
    - RESTful API для каждой сущности
    - Поддержка всех стандартных HTTP методов: GET, POST, PUT, DELETE
 
-5. **Дополнительные компоненты**
-   - Обработка ошибок (GlobalExceptionHandler)
-   - Инициализация тестовых данных (TestDataInitializer)
-   - Конфигурационный файл application.properties
-   - README.md с документацией
-   - Unit тесты
-
    
 ## API Endpoints
 
