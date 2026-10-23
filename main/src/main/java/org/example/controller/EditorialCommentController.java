@@ -1,57 +1,58 @@
 package org.example.controller;
 
-import org.example.model.EditorialComment;
+import jakarta.validation.Valid;
+import org.example.controller.dto.EditorialCommentRequest;
+import org.example.controller.dto.EditorialCommentResponse;
 import org.example.service.EditorialCommentService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/editorial-comments")
 public class EditorialCommentController {
 
-    @Autowired
-    private EditorialCommentService commentService;
+    private final EditorialCommentService service;
+
+    public EditorialCommentController(EditorialCommentService service) {
+        this.service = service;
+    }
 
     @GetMapping
-    public List<EditorialComment> getAllComments() {
-        return commentService.getAllComments();
+    public List<EditorialCommentResponse> getAll() {
+        return service.getAllComments().stream().map(Mappers::toCommentResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<EditorialComment> getCommentById(@PathVariable Long id) {
-        Optional<EditorialComment> comment = commentService.getCommentById(id);
-        return comment.map(ResponseEntity::ok)
+    public ResponseEntity<EditorialCommentResponse> getById(@PathVariable Long id) {
+        return service.getCommentById(id)
+                .map(Mappers::toCommentResponse)
+                .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/translation/{translationId}")
-    public List<EditorialComment> getCommentsByTranslationId(@PathVariable Long translationId) {
-        return commentService.getCommentsByTranslationId(translationId);
+    public List<EditorialCommentResponse> getByTranslationId(@PathVariable Long translationId) {
+        return service.getCommentsByTranslationId(translationId).stream().map(Mappers::toCommentResponse).toList();
     }
 
     @PostMapping
-    public ResponseEntity<EditorialComment> createComment(@RequestBody EditorialComment comment) {
-        EditorialComment createdComment = commentService.createComment(comment);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdComment);
+    public ResponseEntity<EditorialCommentResponse> create(@Valid @RequestBody EditorialCommentRequest body) {
+        var created = service.createComment(Mappers.toComment(body));
+        return ResponseEntity.status(HttpStatus.CREATED).body(Mappers.toCommentResponse(created));
     }
 
+    /** Частичное обновление: поля, не переданные в теле, остаются без изменений. */
     @PatchMapping("/{id}")
-    public ResponseEntity<EditorialComment> updateComment(@PathVariable Long id, @RequestBody EditorialComment commentDetails) {
-        EditorialComment updatedComment = commentService.updateComment(id, commentDetails);
-        if (updatedComment != null) {
-            return ResponseEntity.ok(updatedComment);
-        }
-        return ResponseEntity.notFound().build();
+    public EditorialCommentResponse update(@PathVariable Long id, @RequestBody EditorialCommentRequest body) {
+        return Mappers.toCommentResponse(service.updateComment(id, Mappers.toComment(body)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteComment(@PathVariable Long id) {
-        commentService.deleteComment(id);
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        service.deleteComment(id);
         return ResponseEntity.noContent().build();
     }
 }

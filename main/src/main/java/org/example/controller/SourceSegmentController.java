@@ -1,57 +1,58 @@
 package org.example.controller;
 
-import org.example.model.SourceSegment;
+import jakarta.validation.Valid;
+import org.example.controller.dto.SourceSegmentRequest;
+import org.example.controller.dto.SourceSegmentResponse;
 import org.example.service.SourceSegmentService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/source-segments")
 public class SourceSegmentController {
 
-    @Autowired
-    private SourceSegmentService segmentService;
+    private final SourceSegmentService service;
+
+    public SourceSegmentController(SourceSegmentService service) {
+        this.service = service;
+    }
 
     @GetMapping
-    public List<SourceSegment> getAllSegments() {
-        return segmentService.getAllSegments();
+    public List<SourceSegmentResponse> getAll() {
+        return service.getAllSegments().stream().map(Mappers::toSegmentResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<SourceSegment> getSegmentById(@PathVariable Long id) {
-        Optional<SourceSegment> segment = segmentService.getSegmentById(id);
-        return segment.map(ResponseEntity::ok)
+    public ResponseEntity<SourceSegmentResponse> getById(@PathVariable Long id) {
+        return service.getSegmentById(id)
+                .map(Mappers::toSegmentResponse)
+                .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/project/{projectId}")
-    public List<SourceSegment> getSegmentsByProjectId(@PathVariable Long projectId) {
-        return segmentService.getSegmentsByProjectId(projectId);
+    public List<SourceSegmentResponse> getByProjectId(@PathVariable Long projectId) {
+        return service.getSegmentsByProjectId(projectId).stream().map(Mappers::toSegmentResponse).toList();
     }
 
     @PostMapping
-    public ResponseEntity<SourceSegment> createSegment(@RequestBody SourceSegment segment) {
-        SourceSegment createdSegment = segmentService.createSegment(segment);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdSegment);
+    public ResponseEntity<SourceSegmentResponse> create(@Valid @RequestBody SourceSegmentRequest body) {
+        var created = service.createSegment(Mappers.toSegment(body));
+        return ResponseEntity.status(HttpStatus.CREATED).body(Mappers.toSegmentResponse(created));
     }
 
+    /** Частичное обновление: поля, не переданные в теле, остаются без изменений. */
     @PatchMapping("/{id}")
-    public ResponseEntity<SourceSegment> updateSegment(@PathVariable Long id, @RequestBody SourceSegment segmentDetails) {
-        SourceSegment updatedSegment = segmentService.updateSegment(id, segmentDetails);
-        if (updatedSegment != null) {
-            return ResponseEntity.ok(updatedSegment);
-        }
-        return ResponseEntity.notFound().build();
+    public SourceSegmentResponse update(@PathVariable Long id, @RequestBody SourceSegmentRequest body) {
+        return Mappers.toSegmentResponse(service.updateSegment(id, Mappers.toSegment(body)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteSegment(@PathVariable Long id) {
-        segmentService.deleteSegment(id);
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        service.deleteSegment(id);
         return ResponseEntity.noContent().build();
     }
 }

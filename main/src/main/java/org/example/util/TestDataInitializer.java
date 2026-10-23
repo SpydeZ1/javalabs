@@ -2,74 +2,63 @@ package org.example.util;
 
 import org.example.model.*;
 import org.example.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-
+/** Заполняет хранилище демо-данными. Включается свойством app.seed-data=true. */
 @Component
+@ConditionalOnProperty(name = "app.seed-data", havingValue = "true")
 public class TestDataInitializer implements CommandLineRunner {
 
-    @Autowired
-    private TranslationProjectRepository projectRepository;
+    private final TranslationProjectRepository projectRepository;
+    private final SourceSegmentRepository segmentRepository;
+    private final TranslationRepository translationRepository;
+    private final EditorialCommentRepository commentRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private SourceSegmentRepository segmentRepository;
-
-    @Autowired
-    private TranslationRepository translationRepository;
-
-    @Autowired
-    private EditorialCommentRepository commentRepository;
-
-    @Autowired
-    private UserRepository userRepository;
+    public TestDataInitializer(TranslationProjectRepository projectRepository,
+                               SourceSegmentRepository segmentRepository,
+                               TranslationRepository translationRepository,
+                               EditorialCommentRepository commentRepository,
+                               UserRepository userRepository,
+                               PasswordEncoder passwordEncoder) {
+        this.projectRepository = projectRepository;
+        this.segmentRepository = segmentRepository;
+        this.translationRepository = translationRepository;
+        this.commentRepository = commentRepository;
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     @Override
-    public void run(String... args) throws Exception {
-        // Create test users
-        User user1 = new User(null, "john_doe", "john@example.com", "password123", UserRole.USER);
-        User user2 = new User(null, "editor_smith", "editor@example.com", "password123", UserRole.EDITOR);
-        User admin = new User(null, "admin_user", "admin@example.com", "password123", UserRole.ADMIN);
+    public void run(String... args) {
+        String password = passwordEncoder.encode("password123");
+        User user1 = userRepository.save(new User(null, "john_doe", "john@example.com", password, UserRole.USER));
+        User user2 = userRepository.save(new User(null, "editor_smith", "editor@example.com", password, UserRole.EDITOR));
+        User admin = userRepository.save(new User(null, "admin_user", "admin@example.com", password, UserRole.ADMIN));
 
-        userRepository.save(user1);
-        userRepository.save(user2);
-        userRepository.save(admin);
+        TranslationProject project1 = projectRepository.save(
+                new TranslationProject(null, "Project Alpha", "French", user1.getId(), ProjectStatus.IN_PROGRESS));
+        TranslationProject project2 = projectRepository.save(
+                new TranslationProject(null, "Project Beta", "Spanish", user2.getId(), ProjectStatus.DRAFT));
 
-        // Create test projects
-        TranslationProject project1 = new TranslationProject(null, "Project Alpha", "French", user1.getId(), ProjectStatus.IN_PROGRESS);
-        TranslationProject project2 = new TranslationProject(null, "Project Beta", "Spanish", user2.getId(), ProjectStatus.DRAFT);
+        SourceSegment segment1 = segmentRepository.save(new SourceSegment(null, project1.getId(), "Hello world!", 1));
+        SourceSegment segment2 = segmentRepository.save(new SourceSegment(null, project1.getId(), "Good morning.", 2));
+        SourceSegment segment3 = segmentRepository.save(
+                new SourceSegment(null, project2.getId(), "Welcome to our application.", 1));
 
-        projectRepository.save(project1);
-        projectRepository.save(project2);
+        // Язык перевода соответствует targetLanguage проекта: Alpha - французский, Beta - испанский
+        Translation translation1 = translationRepository.save(
+                new Translation(null, segment1.getId(), user1.getId(), "Bonjour le monde !", TranslationStatus.APPROVED));
+        Translation translation2 = translationRepository.save(
+                new Translation(null, segment2.getId(), user2.getId(), "Bonjour.", TranslationStatus.SUBMITTED));
+        Translation translation3 = translationRepository.save(
+                new Translation(null, segment3.getId(), admin.getId(), "Bienvenido a nuestra aplicación.", TranslationStatus.DRAFT));
 
-        // Create source segments
-        SourceSegment segment1 = new SourceSegment(null, project1.getId(), "Hello world!", 1);
-        SourceSegment segment2 = new SourceSegment(null, project1.getId(), "Good morning.", 2);
-        SourceSegment segment3 = new SourceSegment(null, project2.getId(), "Welcome to our application.", 1);
-
-        segmentRepository.save(segment1);
-        segmentRepository.save(segment2);
-        segment3.setProjectId(project2.getId());
-        segmentRepository.save(segment3);
-
-        // Create translations
-        Translation translation1 = new Translation(null, segment1.getId(), user1.getId(), "Bonjour le monde!", TranslationStatus.APPROVED);
-        Translation translation2 = new Translation(null, segment2.getId(), user2.getId(), "Bonjour matin.", TranslationStatus.SUBMITTED);
-        Translation translation3 = new Translation(null, segment3.getId(), admin.getId(), "Bienvenue dans notre application.", TranslationStatus.DRAFT);
-
-        translationRepository.save(translation1);
-        translationRepository.save(translation2);
-        translationRepository.save(translation3);
-
-        // Create editorial comments
-        EditorialComment comment1 = new EditorialComment(null, translation1.getId(), "Good translation!", CommentStatus.RESOLVED);
-        EditorialComment comment2 = new EditorialComment(null, translation2.getId(), "Consider rephrasing.", CommentStatus.OPEN);
-
-        commentRepository.save(comment1);
-        commentRepository.save(comment2);
-
-        System.out.println("Test data initialized successfully!");
+        commentRepository.save(new EditorialComment(null, translation1.getId(), "Good translation!", CommentStatus.RESOLVED));
+        commentRepository.save(new EditorialComment(null, translation2.getId(), "Consider rephrasing.", CommentStatus.OPEN));
     }
 }

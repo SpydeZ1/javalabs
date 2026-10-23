@@ -7,7 +7,7 @@ public class User {
     private Long id;
     private String username;
     private String email;
-    private String password; // Hashed password
+    private String password; // хранится как BCrypt-хеш
     private UserRole role;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -83,7 +83,6 @@ public class User {
         this.updatedAt = updatedAt;
     }
 
-    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -91,7 +90,6 @@ public class User {
         return Objects.equals(id, user.id);
     }
 
-    @Override
     public int hashCode() {
         return Objects.hash(id);
     }

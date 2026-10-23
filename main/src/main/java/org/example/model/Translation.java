@@ -83,7 +83,6 @@ public class Translation {
         this.updatedAt = updatedAt;
     }
 
-    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -91,7 +90,6 @@ public class Translation {
         return Objects.equals(id, that.id);
     }
 
-    @Override
     public int hashCode() {
         return Objects.hash(id);
     }

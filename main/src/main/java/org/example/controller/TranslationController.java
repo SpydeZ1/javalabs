@@ -1,57 +1,58 @@
 package org.example.controller;
 
-import org.example.model.Translation;
+import jakarta.validation.Valid;
+import org.example.controller.dto.TranslationRequest;
+import org.example.controller.dto.TranslationResponse;
 import org.example.service.TranslationService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/translations")
 public class TranslationController {
 
-    @Autowired
-    private TranslationService translationService;
+    private final TranslationService service;
+
+    public TranslationController(TranslationService service) {
+        this.service = service;
+    }
 
     @GetMapping
-    public List<Translation> getAllTranslations() {
-        return translationService.getAllTranslations();
+    public List<TranslationResponse> getAll() {
+        return service.getAllTranslations().stream().map(Mappers::toTranslationResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Translation> getTranslationById(@PathVariable Long id) {
-        Optional<Translation> translation = translationService.getTranslationById(id);
-        return translation.map(ResponseEntity::ok)
+    public ResponseEntity<TranslationResponse> getById(@PathVariable Long id) {
+        return service.getTranslationById(id)
+                .map(Mappers::toTranslationResponse)
+                .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/segment/{segmentId}")
-    public List<Translation> getTranslationsBySegmentId(@PathVariable Long segmentId) {
-        return translationService.getTranslationsBySegmentId(segmentId);
+    public List<TranslationResponse> getBySegmentId(@PathVariable Long segmentId) {
+        return service.getTranslationsBySegmentId(segmentId).stream().map(Mappers::toTranslationResponse).toList();
     }
 
     @PostMapping
-    public ResponseEntity<Translation> createTranslation(@RequestBody Translation translation) {
-        Translation createdTranslation = translationService.createTranslation(translation);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdTranslation);
+    public ResponseEntity<TranslationResponse> create(@Valid @RequestBody TranslationRequest body) {
+        var created = service.createTranslation(Mappers.toTranslation(body));
+        return ResponseEntity.status(HttpStatus.CREATED).body(Mappers.toTranslationResponse(created));
     }
 
+    /** Частичное обновление: поля, не переданные в теле, остаются без изменений. */
     @PatchMapping("/{id}")
-    public ResponseEntity<Translation> updateTranslation(@PathVariable Long id, @RequestBody Translation translationDetails) {
-        Translation updatedTranslation = translationService.updateTranslation(id, translationDetails);
-        if (updatedTranslation != null) {
-            return ResponseEntity.ok(updatedTranslation);
-        }
-        return ResponseEntity.notFound().build();
+    public TranslationResponse update(@PathVariable Long id, @RequestBody TranslationRequest body) {
+        return Mappers.toTranslationResponse(service.updateTranslation(id, Mappers.toTranslation(body)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTranslation(@PathVariable Long id) {
-        translationService.deleteTranslation(id);
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        service.deleteTranslation(id);
         return ResponseEntity.noContent().build();
     }
 }
