@@ -1,38 +1,23 @@
 package org.example.repository;
 
 import org.example.model.TranslationProject;
+import org.example.model.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Optional;
 
 @Repository
-public class TranslationProjectRepository {
-    private final ConcurrentHashMap<Long, TranslationProject> projects = new ConcurrentHashMap<>();
-    private final AtomicLong idGenerator = new AtomicLong(0);
+public interface TranslationProjectRepository extends JpaRepository<TranslationProject, Long> {
 
-    public List<TranslationProject> findAll() {
-        return projects.values().stream().toList();
-    }
+    boolean existsByOwner(User owner);
 
-    public TranslationProject findById(Long id) {
-        return projects.get(id);
-    }
+    @Query("SELECT DISTINCT p FROM TranslationProject p JOIN FETCH p.owner")
+    List<TranslationProject> findAllWithOwner();
 
-    public TranslationProject save(TranslationProject project) {
-        if (project.getId() == null) {
-            project.setId(idGenerator.incrementAndGet());
-        }
-        projects.put(project.getId(), project);
-        return project;
-    }
-
-    public void deleteById(Long id) {
-        projects.remove(id);
-    }
-
-    public boolean existsById(Long id) {
-        return projects.containsKey(id);
-    }
+    @Query("SELECT p FROM TranslationProject p JOIN FETCH p.owner WHERE p.id = :id")
+    Optional<TranslationProject> findByIdWithOwner(@Param("id") Long id);
 }

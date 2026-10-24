@@ -1,32 +1,79 @@
 package org.example.model;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
+@Entity
+@Table(name = "translations")
 public class Translation {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private Long segmentId;
-    private Long authorId;
+
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "segment_id", nullable = false)
+    private SourceSegment segment;
+
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "author_id", nullable = false)
+    private User author;
+
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String text;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
     private TranslationStatus status;
+
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public Translation() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
+    @OneToMany(mappedBy = "translation", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<EditorialComment> comments = new ArrayList<>();
+
+    @PrePersist
+    void onCreate() {
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        createdAt = now;
+        updatedAt = now;
+        if (status == null) {
+            status = TranslationStatus.DRAFT;
+        }
     }
 
-    public Translation(Long id, Long segmentId, Long authorId, String text, TranslationStatus status) {
-        this();
-        this.id = id;
-        this.segmentId = segmentId;
-        this.authorId = authorId;
-        this.text = text;
-        this.status = status;
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
-    // Getters and Setters
     public Long getId() {
         return id;
     }
@@ -35,20 +82,20 @@ public class Translation {
         this.id = id;
     }
 
-    public Long getSegmentId() {
-        return segmentId;
+    public SourceSegment getSegment() {
+        return segment;
     }
 
-    public void setSegmentId(Long segmentId) {
-        this.segmentId = segmentId;
+    public void setSegment(SourceSegment segment) {
+        this.segment = segment;
     }
 
-    public Long getAuthorId() {
-        return authorId;
+    public User getAuthor() {
+        return author;
     }
 
-    public void setAuthorId(Long authorId) {
-        this.authorId = authorId;
+    public void setAuthor(User author) {
+        this.author = author;
     }
 
     public String getText() {
@@ -71,28 +118,28 @@ public class Translation {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
+    public List<EditorialComment> getComments() {
+        return comments;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         Translation that = (Translation) o;
-        return Objects.equals(id, that.id);
+        return id != null && Objects.equals(id, that.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        return getClass().hashCode();
     }
 }

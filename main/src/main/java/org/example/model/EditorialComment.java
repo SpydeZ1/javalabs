@@ -1,30 +1,68 @@
 package org.example.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Objects;
 
+@Entity
+@Table(name = "editorial_comments")
 public class EditorialComment {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private Long translationId;
-    private String commentText;
+
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "translation_id", nullable = false)
+    private Translation translation;
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String content;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
     private CommentStatus status;
+
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public EditorialComment() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
+    @PrePersist
+    void onCreate() {
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        createdAt = now;
+        updatedAt = now;
+        if (status == null) {
+            status = CommentStatus.OPEN;
+        }
     }
 
-    public EditorialComment(Long id, Long translationId, String commentText, CommentStatus status) {
-        this();
-        this.id = id;
-        this.translationId = translationId;
-        this.commentText = commentText;
-        this.status = status;
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
-    // Getters and Setters
     public Long getId() {
         return id;
     }
@@ -33,20 +71,20 @@ public class EditorialComment {
         this.id = id;
     }
 
-    public Long getTranslationId() {
-        return translationId;
+    public Translation getTranslation() {
+        return translation;
     }
 
-    public void setTranslationId(Long translationId) {
-        this.translationId = translationId;
+    public void setTranslation(Translation translation) {
+        this.translation = translation;
     }
 
-    public String getCommentText() {
-        return commentText;
+    public String getContent() {
+        return content;
     }
 
-    public void setCommentText(String commentText) {
-        this.commentText = commentText;
+    public void setContent(String content) {
+        this.content = content;
     }
 
     public CommentStatus getStatus() {
@@ -61,28 +99,24 @@ public class EditorialComment {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         EditorialComment that = (EditorialComment) o;
-        return Objects.equals(id, that.id);
+        return id != null && Objects.equals(id, that.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        return getClass().hashCode();
     }
 }

@@ -1,45 +1,39 @@
 package org.example.repository;
 
 import org.example.model.SourceSegment;
+import org.example.model.TranslationProject;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Repository
-public class SourceSegmentRepository {
-    private final ConcurrentHashMap<Long, SourceSegment> segments = new ConcurrentHashMap<>();
-    private final AtomicLong idGenerator = new AtomicLong(0);
+public interface SourceSegmentRepository extends JpaRepository<SourceSegment, Long> {
 
-    public List<SourceSegment> findAll() {
-        return segments.values().stream().toList();
-    }
+    boolean existsByProjectAndSequenceNumber(TranslationProject project, Integer sequenceNumber);
 
-    public List<SourceSegment> findByProjectId(Long projectId) {
-        return segments.values().stream()
-                .filter(segment -> projectId.equals(segment.getProjectId()))
-                .collect(Collectors.toList());
-    }
+    boolean existsByProjectAndSequenceNumberAndIdNot(TranslationProject project, Integer sequenceNumber, Long id);
 
-    public SourceSegment findById(Long id) {
-        return segments.get(id);
-    }
+    long countByProject(TranslationProject project);
 
-    public SourceSegment save(SourceSegment segment) {
-        if (segment.getId() == null) {
-            segment.setId(idGenerator.incrementAndGet());
-        }
-        segments.put(segment.getId(), segment);
-        return segment;
-    }
+    @Query("""
+            SELECT COUNT(s) FROM SourceSegment s
+            WHERE s.project.id = :projectId
+              AND NOT EXISTS (
+                SELECT 1 FROM Translation t
+                WHERE t.segment = s AND t.status = org.example.model.TranslationStatus.APPROVED)
+            """)
+    long countWithoutApprovedTranslation(@Param("projectId") Long projectId);
 
-    public void deleteById(Long id) {
-        segments.remove(id);
-    }
+    @Query("SELECT DISTINCT s FROM SourceSegment s JOIN FETCH s.project p JOIN FETCH p.owner")
+    List<SourceSegment> findAllWithProject();
 
-    public boolean existsById(Long id) {
-        return segments.containsKey(id);
-    }
+    @Query("SELECT s FROM SourceSegment s JOIN FETCH s.project p JOIN FETCH p.owner WHERE s.id = :id")
+    Optional<SourceSegment> findByIdWithProject(@Param("id") Long id);
+
+    @Query("SELECT DISTINCT s FROM SourceSegment s JOIN FETCH s.project p JOIN FETCH p.owner WHERE p.id = :projectId")
+    List<SourceSegment> findByProjectId(@Param("projectId") Long projectId);
 }

@@ -1,30 +1,73 @@
 package org.example.model;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+import jakarta.persistence.UniqueConstraint;
+
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
+@Entity
+@Table(
+        name = "source_segments",
+        uniqueConstraints = @UniqueConstraint(name = "segments_project_seq", columnNames = {"project_id", "sequence_number"})
+)
 public class SourceSegment {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private Long projectId;
-    private String sourceText;
-    private Integer order;
+
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id", nullable = false)
+    private TranslationProject project;
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String content;
+
+    @Column(name = "sequence_number", nullable = false)
+    private Integer sequenceNumber;
+
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public SourceSegment() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
+    @OneToMany(mappedBy = "segment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Translation> translations = new ArrayList<>();
+
+    @PrePersist
+    void onCreate() {
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        createdAt = now;
+        updatedAt = now;
     }
 
-    public SourceSegment(Long id, Long projectId, String sourceText, Integer order) {
-        this();
-        this.id = id;
-        this.projectId = projectId;
-        this.sourceText = sourceText;
-        this.order = order;
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
-    // Getters and Setters
     public Long getId() {
         return id;
     }
@@ -33,56 +76,56 @@ public class SourceSegment {
         this.id = id;
     }
 
-    public Long getProjectId() {
-        return projectId;
+    public TranslationProject getProject() {
+        return project;
     }
 
-    public void setProjectId(Long projectId) {
-        this.projectId = projectId;
+    public void setProject(TranslationProject project) {
+        this.project = project;
     }
 
-    public String getSourceText() {
-        return sourceText;
+    public String getContent() {
+        return content;
     }
 
-    public void setSourceText(String sourceText) {
-        this.sourceText = sourceText;
+    public void setContent(String content) {
+        this.content = content;
     }
 
-    public Integer getOrder() {
-        return order;
+    public Integer getSequenceNumber() {
+        return sequenceNumber;
     }
 
-    public void setOrder(Integer order) {
-        this.order = order;
+    public void setSequenceNumber(Integer sequenceNumber) {
+        this.sequenceNumber = sequenceNumber;
     }
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
+    public List<Translation> getTranslations() {
+        return translations;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         SourceSegment that = (SourceSegment) o;
-        return Objects.equals(id, that.id);
+        return id != null && Objects.equals(id, that.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        return getClass().hashCode();
     }
 }

@@ -1,51 +1,17 @@
 package org.example.repository;
 
 import org.example.model.User;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
-
 @Repository
-public class UserRepository {
-    private final ConcurrentHashMap<Long, User> users = new ConcurrentHashMap<>();
-    private final AtomicLong idGenerator = new AtomicLong(0);
+public interface UserRepository extends JpaRepository<User, Long> {
 
-    public List<User> findAll() {
-        return users.values().stream().toList();
-    }
+    boolean existsByUsername(String username);
 
-    public User findById(Long id) {
-        return users.get(id);
-    }
+    boolean existsByEmail(String email);
 
-    public User findByUsername(String username) {
-        return users.values().stream()
-                .filter(user -> user.getUsername().equals(username))
-                .findFirst()
-                .orElse(null);
-    }
+    boolean existsByUsernameAndIdNot(String username, Long id);
 
-    public User save(User user) {
-        if (user.getId() == null) {
-            user.setId(idGenerator.incrementAndGet());
-        }
-        users.put(user.getId(), user);
-        return user;
-    }
-
-    public void deleteById(Long id) {
-        users.remove(id);
-    }
-
-    public boolean existsById(Long id) {
-        return users.containsKey(id);
-    }
-
-    public boolean existsByUsername(String username) {
-        return users.values().stream()
-                .anyMatch(user -> user.getUsername().equals(username));
-    }
+    boolean existsByEmailAndIdNot(String email, Long id);
 }

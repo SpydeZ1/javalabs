@@ -1,51 +1,56 @@
 package org.example.controller;
 
+import jakarta.validation.Valid;
+import org.example.dto.UserRequest;
+import org.example.dto.UserResponse;
+import org.example.dto.UserUpdateRequest;
+import org.example.mapper.UserMapper;
 import org.example.model.User;
 import org.example.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
     @GetMapping
-    public List<User> getAllUsers() {
-        return userService.getAllUsers();
+    public List<UserResponse> getAllUsers() {
+        return userService.getAllUsers().stream()
+                .map(UserMapper::toResponse)
+                .toList();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Long id) {
-        Optional<User> user = userService.getUserById(id);
-        return user.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public UserResponse getUserById(@PathVariable Long id) {
+        return UserMapper.toResponse(userService.getUserById(id));
     }
 
     @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody User user) {
-        // Check if username already exists
-        if (userService.usernameExists(user.getUsername())) {
-            return ResponseEntity.badRequest().build();
-        }
-        User createdUser = userService.createUser(user);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
+    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserRequest request) {
+        User created = userService.createUser(UserMapper.toEntity(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(UserMapper.toResponse(created));
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User userDetails) {
-        User updatedUser = userService.updateUser(id, userDetails);
-        if (updatedUser != null) {
-            return ResponseEntity.ok(updatedUser);
-        }
-        return ResponseEntity.notFound().build();
+    public UserResponse updateUser(@PathVariable Long id, @Valid @RequestBody UserUpdateRequest request) {
+        return UserMapper.toResponse(userService.updateUser(id, request));
     }
 
     @DeleteMapping("/{id}")

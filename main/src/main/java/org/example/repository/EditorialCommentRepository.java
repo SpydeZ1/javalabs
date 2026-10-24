@@ -1,45 +1,47 @@
 package org.example.repository;
 
+import org.example.model.CommentStatus;
 import org.example.model.EditorialComment;
+import org.example.model.Translation;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Repository
-public class EditorialCommentRepository {
-    private final ConcurrentHashMap<Long, EditorialComment> comments = new ConcurrentHashMap<>();
-    private final AtomicLong idGenerator = new AtomicLong(0);
+public interface EditorialCommentRepository extends JpaRepository<EditorialComment, Long> {
 
-    public List<EditorialComment> findAll() {
-        return comments.values().stream().toList();
-    }
+    boolean existsByTranslationAndStatus(Translation translation, CommentStatus status);
 
-    public List<EditorialComment> findByTranslationId(Long translationId) {
-        return comments.values().stream()
-                .filter(comment -> translationId.equals(comment.getTranslationId()))
-                .collect(Collectors.toList());
-    }
+    @Query("""
+            SELECT DISTINCT c FROM EditorialComment c
+            JOIN FETCH c.translation t
+            JOIN FETCH t.segment s
+            JOIN FETCH s.project
+            JOIN FETCH t.author
+            """)
+    List<EditorialComment> findAllWithTranslation();
 
-    public EditorialComment findById(Long id) {
-        return comments.get(id);
-    }
+    @Query("""
+            SELECT c FROM EditorialComment c
+            JOIN FETCH c.translation t
+            JOIN FETCH t.segment s
+            JOIN FETCH s.project
+            JOIN FETCH t.author
+            WHERE c.id = :id
+            """)
+    Optional<EditorialComment> findByIdWithTranslation(@Param("id") Long id);
 
-    public EditorialComment save(EditorialComment comment) {
-        if (comment.getId() == null) {
-            comment.setId(idGenerator.incrementAndGet());
-        }
-        comments.put(comment.getId(), comment);
-        return comment;
-    }
-
-    public void deleteById(Long id) {
-        comments.remove(id);
-    }
-
-    public boolean existsById(Long id) {
-        return comments.containsKey(id);
-    }
+    @Query("""
+            SELECT DISTINCT c FROM EditorialComment c
+            JOIN FETCH c.translation t
+            JOIN FETCH t.segment s
+            JOIN FETCH s.project
+            JOIN FETCH t.author
+            WHERE t.id = :translationId
+            """)
+    List<EditorialComment> findByTranslationId(@Param("translationId") Long translationId);
 }
