@@ -1,0 +1,265 @@
+@baseUrl = http://localhost:8080
+@annaId = 1
+@borisId = 2
+@draftProjectId = 1
+@activeProjectId = 2
+@draftSegmentId = 1
+@segmentOneId = 2
+@segmentTwoId = 3
+@submittedTranslationId = 1
+@draftTranslationId = 2
+@openCommentId = 1
+
+### === Чтение сида ===
+
+### Список пользователей
+GET {{baseUrl}}/api/users
+
+### Пользователь по id
+GET {{baseUrl}}/api/users/{{annaId}}
+
+### Пользователь не найден
+GET {{baseUrl}}/api/users/999
+
+### Список проектов
+GET {{baseUrl}}/api/translation-projects
+
+### Проект по id
+GET {{baseUrl}}/api/translation-projects/{{draftProjectId}}
+
+### Все сегменты
+GET {{baseUrl}}/api/source-segments
+
+### Сегмент по id
+GET {{baseUrl}}/api/source-segments/{{draftSegmentId}}
+
+### Сегменты проекта
+GET {{baseUrl}}/api/source-segments/project/{{activeProjectId}}
+
+### Все переводы
+GET {{baseUrl}}/api/translations
+
+### Перевод по id
+GET {{baseUrl}}/api/translations/{{submittedTranslationId}}
+
+### Переводы сегмента
+GET {{baseUrl}}/api/translations/segment/{{segmentOneId}}
+
+### Все замечания
+GET {{baseUrl}}/api/editorial-comments
+
+### Замечание по id
+GET {{baseUrl}}/api/editorial-comments/{{openCommentId}}
+
+### Замечания к переводу
+GET {{baseUrl}}/api/editorial-comments/translation/{{submittedTranslationId}}
+
+### === CRUD на отдельных записях ===
+
+### Создать пользователя
+POST {{baseUrl}}/api/users
+Content-Type: application/json
+
+{
+  "username": "clara",
+  "email": "clara@studio.local",
+  "role": "TRANSLATOR"
+}
+
+### Повторное имя — 409
+POST {{baseUrl}}/api/users
+Content-Type: application/json
+
+{
+  "username": "anna",
+  "email": "anna2@studio.local",
+  "role": "EDITOR"
+}
+
+### Обновить пользователя
+PATCH {{baseUrl}}/api/users/{{borisId}}
+Content-Type: application/json
+
+{
+  "email": "boris.editor@studio.local"
+}
+
+### Создать пользователя для удаления
+POST {{baseUrl}}/api/users
+Content-Type: application/json
+
+{
+  "username": "dmitry",
+  "email": "dmitry@studio.local",
+  "role": "EDITOR"
+}
+
+### Удалить пользователя без ссылок (подставьте id из ответа выше)
+DELETE {{baseUrl}}/api/users/3
+
+### Создать проект
+POST {{baseUrl}}/api/translation-projects
+Content-Type: application/json
+
+{
+  "name": "Справка по тарифам",
+  "targetLanguage": "fr",
+  "ownerId": {{annaId}}
+}
+
+### Обновить черновик
+PATCH {{baseUrl}}/api/translation-projects/{{draftProjectId}}
+Content-Type: application/json
+
+{
+  "name": "Интерфейс личного кабинета"
+}
+
+### Создать сегмент в черновике
+POST {{baseUrl}}/api/source-segments
+Content-Type: application/json
+
+{
+  "projectId": {{draftProjectId}},
+  "content": "Отмена",
+  "sequenceNumber": 2
+}
+
+### Тот же порядковый номер — 409
+POST {{baseUrl}}/api/source-segments
+Content-Type: application/json
+
+{
+  "projectId": {{draftProjectId}},
+  "content": "Ещё раз",
+  "sequenceNumber": 2
+}
+
+### Обновить сегмент
+PATCH {{baseUrl}}/api/source-segments/{{draftSegmentId}}
+Content-Type: application/json
+
+{
+  "content": "Сохранить"
+}
+
+### Перевод в черновике проекта — 409
+POST {{baseUrl}}/api/translations
+Content-Type: application/json
+
+{
+  "segmentId": {{draftSegmentId}},
+  "authorId": {{annaId}},
+  "text": "Save"
+}
+
+### Обновить текст черновика перевода
+PATCH {{baseUrl}}/api/translations/{{draftTranslationId}}
+Content-Type: application/json
+
+{
+  "text": "We will reply within a day."
+}
+
+### Добавить ещё одно замечание к переводу, возвращённому на доработку
+POST {{baseUrl}}/api/editorial-comments
+Content-Type: application/json
+
+{
+  "translationId": {{submittedTranslationId}},
+  "content": "Слишком дословно."
+}
+
+### Обновить текст замечания из сида
+PATCH {{baseUrl}}/api/editorial-comments/{{openCommentId}}
+Content-Type: application/json
+
+{
+  "content": "Лучше: Your request is being processed."
+}
+
+### === Сценарий согласования ===
+
+### 1. Запуск черновика
+POST {{baseUrl}}/api/translation-projects/{{draftProjectId}}/start
+
+### 2. Повторный запуск — 409
+POST {{baseUrl}}/api/translation-projects/{{draftProjectId}}/start
+
+### 3. Перевод для нового сегмента черновика (проект уже IN_PROGRESS)
+POST {{baseUrl}}/api/translations
+Content-Type: application/json
+
+{
+  "segmentId": {{draftSegmentId}},
+  "authorId": {{annaId}},
+  "text": "Save"
+}
+
+### 4. Утверждение при открытом замечании — 409
+POST {{baseUrl}}/api/translations/{{submittedTranslationId}}/approve
+
+### 5. Отправка черновика на проверку
+POST {{baseUrl}}/api/translations/{{draftTranslationId}}/submit
+
+### 6. Редактор возвращает перевод на доработку
+POST {{baseUrl}}/api/translations/{{draftTranslationId}}/request-changes
+Content-Type: application/json
+
+{
+  "content": "Уточните срок ответа."
+}
+
+### 7. Повторная отправка без закрытия замечания — 409
+POST {{baseUrl}}/api/translations/{{draftTranslationId}}/submit
+
+### 8. Закрыть замечание из шага 6 (id возьмите из ответа)
+POST {{baseUrl}}/api/editorial-comments/3/resolve
+
+### 9. Снова отправить на проверку
+POST {{baseUrl}}/api/translations/{{draftTranslationId}}/submit
+
+### 10. Утвердить второй перевод
+POST {{baseUrl}}/api/translations/{{draftTranslationId}}/approve
+
+### 11. Закрыть исходное замечание
+POST {{baseUrl}}/api/editorial-comments/{{openCommentId}}/resolve
+
+### 12. Закрыть замечание из CRUD, если создавали
+POST {{baseUrl}}/api/editorial-comments/2/resolve
+
+### 13. Первый перевод вернули на доработку — отправить его заново
+POST {{baseUrl}}/api/translations/{{submittedTranslationId}}/submit
+
+### 14. Утвердить первый перевод
+POST {{baseUrl}}/api/translations/{{submittedTranslationId}}/approve
+
+### 15. Завершить проект, когда все сегменты утверждены
+POST {{baseUrl}}/api/translation-projects/{{activeProjectId}}/complete
+
+### 16. Новый перевод в завершённом проекте — 409
+POST {{baseUrl}}/api/translations
+Content-Type: application/json
+
+{
+  "segmentId": {{segmentOneId}},
+  "authorId": {{annaId}},
+  "text": "Too late"
+}
+
+### === Удаление ===
+
+### Удалить замечание (если сценарий ещё не закрывал его)
+DELETE {{baseUrl}}/api/editorial-comments/3
+
+### Удалить неутверждённый перевод
+DELETE {{baseUrl}}/api/translations/{{draftTranslationId}}
+
+### Удалить сегмент с утверждённым переводом — 409
+DELETE {{baseUrl}}/api/source-segments/{{draftSegmentId}}
+
+### Удаление проекта вместе с сегментами и переводами
+DELETE {{baseUrl}}/api/translation-projects/{{draftProjectId}}
+
+### Пользователь, на которого ещё ссылаются данные — 409
+DELETE {{baseUrl}}/api/users/{{annaId}}

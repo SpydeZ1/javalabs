@@ -1,5 +1,8 @@
 HELP.md
 target/
+.env
+application-local.properties
+*.zip
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
@@ -31,3 +34,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Spring Boot ###
+*.jar
+*.war
+*.ear
