@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -33,6 +34,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ErrorResponse> handleConflict(ConflictException ex) {
         return error(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+        return error(HttpStatus.FORBIDDEN, "Недостаточно прав для выполнения операции");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -65,11 +71,6 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.CONFLICT, "Нарушено ограничение целостности данных");
     }
 
-    /**
-     * Последний рубеж. Стандартные ошибки Spring MVC (404 на неизвестный URL, 405, 415 и т.п.)
-     * реализуют {@link org.springframework.web.ErrorResponse} и сохраняют свой статус,
-     * всё остальное — 500 с записью в лог.
-     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex) {
         if (ex instanceof org.springframework.web.ErrorResponse springError

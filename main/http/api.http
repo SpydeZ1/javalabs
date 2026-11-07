@@ -1,265 +1,605 @@
-@baseUrl = http://localhost:8080
-@annaId = 1
-@borisId = 2
 @draftProjectId = 1
 @activeProjectId = 2
 @draftSegmentId = 1
 @segmentOneId = 2
 @segmentTwoId = 3
-@submittedTranslationId = 1
+@rejectedTranslationId = 1
 @draftTranslationId = 2
 @openCommentId = 1
 
-### === Чтение сида ===
+### 1.1 Получить CSRF-токен
+GET {{baseUrl}}/api/auth/csrf
 
-### Список пользователей
-GET {{baseUrl}}/api/users
+> {% client.global.set("csrf", response.body.token); %}
 
-### Пользователь по id
-GET {{baseUrl}}/api/users/{{annaId}}
+### 1.2 Регистрация нового пользователя (роль выдаётся сервером)
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
 
-### Пользователь не найден
-GET {{baseUrl}}/api/users/999
+{
+  "username": "{{claraUser}}",
+  "email": "clara@studio.local",
+  "password": "{{claraPassword}}",
+  "role": "ADMIN"
+}
 
-### Список проектов
+> {% client.global.set("claraId", response.body.id); %}
+
+### 1.3 Повторная регистрация — 409
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
+
+{
+  "username": "{{claraUser}}",
+  "email": "clara2@studio.local",
+  "password": "{{claraPassword}}"
+}
+
+### 1.4 Слабый пароль — 400
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
+
+{
+  "username": "weakling",
+  "email": "weakling@studio.local",
+  "password": "password"
+}
+
+### 1.5 Регистрация без CSRF-токена — 403
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "nocsrf",
+  "email": "nocsrf@studio.local",
+  "password": "Tr@nslate2026"
+}
+
+### 1.6 Запрос без аутентификации — 401
 GET {{baseUrl}}/api/translation-projects
 
-### Проект по id
-GET {{baseUrl}}/api/translation-projects/{{draftProjectId}}
+### 1.7 Неверный пароль — 401
+GET {{baseUrl}}/api/users/me
+Authorization: Basic {{annaUser}}:Wrong#Pass123
 
-### Все сегменты
-GET {{baseUrl}}/api/source-segments
+### 1.8 Профиль только что зарегистрированного пользователя (TRANSLATOR)
+GET {{baseUrl}}/api/users/me
+Authorization: Basic {{claraUser}}:{{claraPassword}}
 
-### Сегмент по id
-GET {{baseUrl}}/api/source-segments/{{draftSegmentId}}
+### 1.9 Обычный пользователь не видит список пользователей — 403
+GET {{baseUrl}}/api/users
+Authorization: Basic {{claraUser}}:{{claraPassword}}
 
-### Сегменты проекта
-GET {{baseUrl}}/api/source-segments/project/{{activeProjectId}}
-
-### Все переводы
-GET {{baseUrl}}/api/translations
-
-### Перевод по id
-GET {{baseUrl}}/api/translations/{{submittedTranslationId}}
-
-### Переводы сегмента
-GET {{baseUrl}}/api/translations/segment/{{segmentOneId}}
-
-### Все замечания
-GET {{baseUrl}}/api/editorial-comments
-
-### Замечание по id
-GET {{baseUrl}}/api/editorial-comments/{{openCommentId}}
-
-### Замечания к переводу
-GET {{baseUrl}}/api/editorial-comments/translation/{{submittedTranslationId}}
-
-### === CRUD на отдельных записях ===
-
-### Создать пользователя
-POST {{baseUrl}}/api/users
+### 1.10 Обычный пользователь не может повысить собственную роль — 403
+PATCH {{baseUrl}}/api/users/{{claraId}}
+Authorization: Basic {{claraUser}}:{{claraPassword}}
 Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
 
 {
-  "username": "clara",
-  "email": "clara@studio.local",
-  "role": "TRANSLATOR"
+  "role": "ADMIN"
 }
 
-### Повторное имя — 409
-POST {{baseUrl}}/api/users
+### 1.11 Пользователь меняет собственный email
+PATCH {{baseUrl}}/api/users/{{claraId}}
+Authorization: Basic {{claraUser}}:{{claraPassword}}
 Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
 
 {
-  "username": "anna",
-  "email": "anna2@studio.local",
-  "role": "EDITOR"
+  "email": "clara.new@studio.local"
 }
 
-### Обновить пользователя
-PATCH {{baseUrl}}/api/users/{{borisId}}
-Content-Type: application/json
+### 2.1 Администратор: список пользователей
+GET {{baseUrl}}/api/users
+Authorization: Basic {{adminUser}}:{{adminPassword}}
 
-{
-  "email": "boris.editor@studio.local"
-}
-
-### Создать пользователя для удаления
+### 2.2 Администратор: создать редактора
 POST {{baseUrl}}/api/users
+Authorization: Basic {{adminUser}}:{{adminPassword}}
 Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
 
 {
   "username": "dmitry",
   "email": "dmitry@studio.local",
+  "password": "Ed1tor#Secret",
   "role": "EDITOR"
 }
 
-### Удалить пользователя без ссылок (подставьте id из ответа выше)
-DELETE {{baseUrl}}/api/users/3
+> {% client.global.set("dmitryId", response.body.id); %}
 
-### Создать проект
-POST {{baseUrl}}/api/translation-projects
+### 2.3 Администратор: заблокировать пользователя
+PATCH {{baseUrl}}/api/users/{{claraId}}
+Authorization: Basic {{adminUser}}:{{adminPassword}}
 Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
+
+{
+  "status": "BLOCKED"
+}
+
+### 2.4 Заблокированный пользователь не может войти — 401
+GET {{baseUrl}}/api/users/me
+Authorization: Basic {{claraUser}}:{{claraPassword}}
+
+### 2.5 Заблокированного нельзя назначить владельцем проекта — 409
+POST {{baseUrl}}/api/translation-projects
+Authorization: Basic {{adminUser}}:{{adminPassword}}
+Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
+
+{
+  "name": "Проект для заблокированного",
+  "targetLanguage": "fr",
+  "ownerId": {{claraId}}
+}
+
+### 2.6 Администратор: разблокировать пользователя
+PATCH {{baseUrl}}/api/users/{{claraId}}
+Authorization: Basic {{adminUser}}:{{adminPassword}}
+Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
+
+{
+  "status": "ACTIVE"
+}
+
+### 2.7 Администратор не может менять собственные роль и статус — 409
+PATCH {{baseUrl}}/api/users/3
+Authorization: Basic {{adminUser}}:{{adminPassword}}
+Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
+
+{
+  "role": "EDITOR"
+}
+
+### 3.1 Чтение: пользователь по id (сам себя)
+GET {{baseUrl}}/api/users/1
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+
+### 3.2 Чтение: чужой профиль — 403
+GET {{baseUrl}}/api/users/2
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+
+### 3.3 Чтение: проекты
+GET {{baseUrl}}/api/translation-projects
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+
+### 3.4 Чтение: проект по id
+GET {{baseUrl}}/api/translation-projects/{{draftProjectId}}
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+
+### 3.5 Чтение: все сегменты
+GET {{baseUrl}}/api/source-segments
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+
+### 3.6 Чтение: сегмент по id
+GET {{baseUrl}}/api/source-segments/{{draftSegmentId}}
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+
+### 3.7 Чтение: сегменты проекта
+GET {{baseUrl}}/api/source-segments/project/{{activeProjectId}}
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+
+### 3.8 Чтение: все переводы
+GET {{baseUrl}}/api/translations
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+
+### 3.9 Чтение: перевод по id
+GET {{baseUrl}}/api/translations/{{rejectedTranslationId}}
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+
+### 3.10 Чтение: переводы сегмента
+GET {{baseUrl}}/api/translations/segment/{{segmentOneId}}
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+
+### 3.11 Чтение: все замечания
+GET {{baseUrl}}/api/editorial-comments
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+
+### 3.12 Чтение: замечание по id
+GET {{baseUrl}}/api/editorial-comments/{{openCommentId}}
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+
+### 3.13 Чтение: замечания к переводу
+GET {{baseUrl}}/api/editorial-comments/translation/{{rejectedTranslationId}}
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+
+### 4.1 CRUD: переводчик создаёт проект на себя
+POST {{baseUrl}}/api/translation-projects
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
 
 {
   "name": "Справка по тарифам",
   "targetLanguage": "fr",
-  "ownerId": {{annaId}}
+  "ownerId": 1
 }
 
-### Обновить черновик
-PATCH {{baseUrl}}/api/translation-projects/{{draftProjectId}}
+> {% client.global.set("crudProjectId", response.body.id); %}
+
+### 4.2 Проект на другого владельца — 403
+POST {{baseUrl}}/api/translation-projects
+Authorization: Basic {{annaUser}}:{{annaPassword}}
 Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
 
 {
-  "name": "Интерфейс личного кабинета"
+  "name": "Чужой проект",
+  "targetLanguage": "fr",
+  "ownerId": 2
 }
 
-### Создать сегмент в черновике
+### 4.3 CRUD: обновить проект
+PATCH {{baseUrl}}/api/translation-projects/{{crudProjectId}}
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
+
+{
+  "name": "Справка по тарифам и оплате"
+}
+
+### 4.4 Чужой проект изменить нельзя — 403
+PATCH {{baseUrl}}/api/translation-projects/{{crudProjectId}}
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
+
+{
+  "name": "Захват"
+}
+
+### 4.5 CRUD: создать сегмент
 POST {{baseUrl}}/api/source-segments
+Authorization: Basic {{annaUser}}:{{annaPassword}}
 Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
 
 {
-  "projectId": {{draftProjectId}},
-  "content": "Отмена",
-  "sequenceNumber": 2
+  "projectId": {{crudProjectId}},
+  "content": "Оплата принята",
+  "sequenceNumber": 1
 }
 
-### Тот же порядковый номер — 409
+> {% client.global.set("crudSegmentId", response.body.id); %}
+
+### 4.6 Тот же порядковый номер — 409
 POST {{baseUrl}}/api/source-segments
+Authorization: Basic {{annaUser}}:{{annaPassword}}
 Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
 
 {
-  "projectId": {{draftProjectId}},
-  "content": "Ещё раз",
-  "sequenceNumber": 2
+  "projectId": {{crudProjectId}},
+  "content": "Дубль",
+  "sequenceNumber": 1
 }
 
-### Обновить сегмент
-PATCH {{baseUrl}}/api/source-segments/{{draftSegmentId}}
+### 4.7 CRUD: обновить сегмент
+PATCH {{baseUrl}}/api/source-segments/{{crudSegmentId}}
+Authorization: Basic {{annaUser}}:{{annaPassword}}
 Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
 
 {
-  "content": "Сохранить"
+  "content": "Оплата успешно принята"
 }
 
-### Перевод в черновике проекта — 409
+### 4.8 Перевод в проекте-черновике — 409
 POST {{baseUrl}}/api/translations
+Authorization: Basic {{annaUser}}:{{annaPassword}}
 Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
 
 {
-  "segmentId": {{draftSegmentId}},
-  "authorId": {{annaId}},
-  "text": "Save"
+  "segmentId": {{crudSegmentId}},
+  "authorId": 1,
+  "text": "Payment received"
 }
 
-### Обновить текст черновика перевода
-PATCH {{baseUrl}}/api/translations/{{draftTranslationId}}
+### 4.9 Запуск проекта
+POST {{baseUrl}}/api/translation-projects/{{crudProjectId}}/start
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 4.10 CRUD: создать перевод
+POST {{baseUrl}}/api/translations
+Authorization: Basic {{annaUser}}:{{annaPassword}}
 Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
 
 {
-  "text": "We will reply within a day."
+  "segmentId": {{crudSegmentId}},
+  "authorId": 1,
+  "text": "Payment received"
 }
 
-### Добавить ещё одно замечание к переводу, возвращённому на доработку
+> {% client.global.set("crudTranslationId", response.body.id); %}
+
+### 4.11 Нельзя подписать перевод чужим авторством — 403
+POST {{baseUrl}}/api/translations
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
+
+{
+  "segmentId": {{crudSegmentId}},
+  "authorId": 2,
+  "text": "Spoofed"
+}
+
+### 4.12 Редактор не создаёт переводы — 403
+POST {{baseUrl}}/api/translations
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
+
+{
+  "segmentId": {{crudSegmentId}},
+  "authorId": 2,
+  "text": "Editor text"
+}
+
+### 4.13 CRUD: обновить перевод
+PATCH {{baseUrl}}/api/translations/{{crudTranslationId}}
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
+
+{
+  "text": "Payment has been received"
+}
+
+### 4.14 Чужой перевод править нельзя — 403
+PATCH {{baseUrl}}/api/translations/{{crudTranslationId}}
+Authorization: Basic {{claraUser}}:{{claraPassword}}
+Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
+
+{
+  "text": "Hijacked"
+}
+
+### 4.15 Отправить перевод на проверку
+POST {{baseUrl}}/api/translations/{{crudTranslationId}}/submit
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 4.16 CRUD: редактор создаёт замечание (перевод возвращается автору)
 POST {{baseUrl}}/api/editorial-comments
+Authorization: Basic {{borisUser}}:{{borisPassword}}
 Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
 
 {
-  "translationId": {{submittedTranslationId}},
-  "content": "Слишком дословно."
+  "translationId": {{crudTranslationId}},
+  "content": "Лучше: Your payment was received."
 }
 
-### Обновить текст замечания из сида
-PATCH {{baseUrl}}/api/editorial-comments/{{openCommentId}}
+> {% client.global.set("crudCommentId", response.body.id); %}
+
+### 4.17 Переводчик не создаёт замечания — 403
+POST {{baseUrl}}/api/editorial-comments
+Authorization: Basic {{annaUser}}:{{annaPassword}}
 Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
 
 {
-  "content": "Лучше: Your request is being processed."
+  "translationId": {{crudTranslationId}},
+  "content": "Сам себе замечание"
 }
 
-### === Сценарий согласования ===
+### 4.18 CRUD: обновить замечание
+PATCH {{baseUrl}}/api/editorial-comments/{{crudCommentId}}
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
 
-### 1. Запуск черновика
+{
+  "content": "Лучше: Your payment has been received."
+}
+
+### 4.19 Автор перевода закрывает замечание
+POST {{baseUrl}}/api/editorial-comments/{{crudCommentId}}/resolve
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 4.20 CRUD: удалить замечание
+DELETE {{baseUrl}}/api/editorial-comments/{{crudCommentId}}
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 4.21 CRUD: удалить перевод
+DELETE {{baseUrl}}/api/translations/{{crudTranslationId}}
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 4.22 CRUD: удалить сегмент
+DELETE {{baseUrl}}/api/source-segments/{{crudSegmentId}}
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 4.23 CRUD: удалить проект
+DELETE {{baseUrl}}/api/translation-projects/{{crudProjectId}}
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 4.24 CRUD: администратор удаляет пользователя без ссылок
+DELETE {{baseUrl}}/api/users/{{dmitryId}}
+Authorization: Basic {{adminUser}}:{{adminPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 5.1 Сценарий согласования: запуск проекта-черновика
 POST {{baseUrl}}/api/translation-projects/{{draftProjectId}}/start
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
 
-### 2. Повторный запуск — 409
+### 5.2 Повторный запуск — 409
 POST {{baseUrl}}/api/translation-projects/{{draftProjectId}}/start
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
 
-### 3. Перевод для нового сегмента черновика (проект уже IN_PROGRESS)
+### 5.3 Перевод первого сегмента
 POST {{baseUrl}}/api/translations
+Authorization: Basic {{annaUser}}:{{annaPassword}}
 Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
 
 {
   "segmentId": {{draftSegmentId}},
-  "authorId": {{annaId}},
-  "text": "Save"
+  "authorId": 1,
+  "text": "Save changes"
 }
 
-### 4. Утверждение при открытом замечании — 409
-POST {{baseUrl}}/api/translations/{{submittedTranslationId}}/approve
+> {% client.global.set("firstTranslationId", response.body.id); %}
 
-### 5. Отправка черновика на проверку
-POST {{baseUrl}}/api/translations/{{draftTranslationId}}/submit
+### 5.4 Утверждение черновика — 409
+POST {{baseUrl}}/api/translations/{{firstTranslationId}}/approve
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+X-XSRF-TOKEN: {{csrf}}
 
-### 6. Редактор возвращает перевод на доработку
-POST {{baseUrl}}/api/translations/{{draftTranslationId}}/request-changes
+### 5.5 Отправка на проверку
+POST {{baseUrl}}/api/translations/{{firstTranslationId}}/submit
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 5.6 Автор не может утвердить собственный перевод — 403
+POST {{baseUrl}}/api/translations/{{firstTranslationId}}/approve
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 5.7 Редактор утверждает перевод
+POST {{baseUrl}}/api/translations/{{firstTranslationId}}/approve
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 5.8 Завершение проекта: у каждого сегмента есть утверждённый перевод
+POST {{baseUrl}}/api/translation-projects/{{draftProjectId}}/complete
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 5.9 Новый перевод в завершённом проекте — 409
+POST {{baseUrl}}/api/translations
+Authorization: Basic {{annaUser}}:{{annaPassword}}
 Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
+
+{
+  "segmentId": {{draftSegmentId}},
+  "authorId": 1,
+  "text": "Too late"
+}
+
+### 5.10 Отправка возвращённого перевода при открытом замечании — 409
+POST {{baseUrl}}/api/translations/{{rejectedTranslationId}}/submit
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 5.11 Закрытие замечания из сида
+POST {{baseUrl}}/api/editorial-comments/{{openCommentId}}/resolve
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 5.12 Повторная отправка первого перевода проекта в работе
+POST {{baseUrl}}/api/translations/{{rejectedTranslationId}}/submit
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 5.13 Утверждение первого перевода
+POST {{baseUrl}}/api/translations/{{rejectedTranslationId}}/approve
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 5.14 Отправка второго перевода
+POST {{baseUrl}}/api/translations/{{draftTranslationId}}/submit
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 5.15 Редактор возвращает перевод с замечанием
+POST {{baseUrl}}/api/translations/{{draftTranslationId}}/request-changes
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
 
 {
   "content": "Уточните срок ответа."
 }
 
-### 7. Повторная отправка без закрытия замечания — 409
+> {% client.global.set("secondCommentId", response.body.comment.id); %}
+
+### 5.16 Повторная отправка без закрытия замечания — 409
 POST {{baseUrl}}/api/translations/{{draftTranslationId}}/submit
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
 
-### 8. Закрыть замечание из шага 6 (id возьмите из ответа)
-POST {{baseUrl}}/api/editorial-comments/3/resolve
+### 5.17 Постороннему переводчику закрывать замечание нельзя — 403
+POST {{baseUrl}}/api/editorial-comments/{{secondCommentId}}/resolve
+Authorization: Basic {{claraUser}}:{{claraPassword}}
+X-XSRF-TOKEN: {{csrf}}
 
-### 9. Снова отправить на проверку
-POST {{baseUrl}}/api/translations/{{draftTranslationId}}/submit
+### 5.18 Автор закрывает замечание
+POST {{baseUrl}}/api/editorial-comments/{{secondCommentId}}/resolve
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
 
-### 10. Утвердить второй перевод
-POST {{baseUrl}}/api/translations/{{draftTranslationId}}/approve
-
-### 11. Закрыть исходное замечание
-POST {{baseUrl}}/api/editorial-comments/{{openCommentId}}/resolve
-
-### 12. Закрыть замечание из CRUD, если создавали
-POST {{baseUrl}}/api/editorial-comments/2/resolve
-
-### 13. Первый перевод вернули на доработку — отправить его заново
-POST {{baseUrl}}/api/translations/{{submittedTranslationId}}/submit
-
-### 14. Утвердить первый перевод
-POST {{baseUrl}}/api/translations/{{submittedTranslationId}}/approve
-
-### 15. Завершить проект, когда все сегменты утверждены
-POST {{baseUrl}}/api/translation-projects/{{activeProjectId}}/complete
-
-### 16. Новый перевод в завершённом проекте — 409
-POST {{baseUrl}}/api/translations
+### 5.19 Автор исправляет перевод
+PATCH {{baseUrl}}/api/translations/{{draftTranslationId}}
+Authorization: Basic {{annaUser}}:{{annaPassword}}
 Content-Type: application/json
+X-XSRF-TOKEN: {{csrf}}
 
 {
-  "segmentId": {{segmentOneId}},
-  "authorId": {{annaId}},
-  "text": "Too late"
+  "text": "We will reply within one day."
 }
 
-### === Удаление ===
+### 5.20 Повторная отправка
+POST {{baseUrl}}/api/translations/{{draftTranslationId}}/submit
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
 
-### Удалить замечание (если сценарий ещё не закрывал его)
-DELETE {{baseUrl}}/api/editorial-comments/3
+### 5.21 Утверждение второго перевода
+POST {{baseUrl}}/api/translations/{{draftTranslationId}}/approve
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+X-XSRF-TOKEN: {{csrf}}
 
-### Удалить неутверждённый перевод
-DELETE {{baseUrl}}/api/translations/{{draftTranslationId}}
+### 5.22 Завершение проекта в работе
+POST {{baseUrl}}/api/translation-projects/{{activeProjectId}}/complete
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
 
-### Удалить сегмент с утверждённым переводом — 409
-DELETE {{baseUrl}}/api/source-segments/{{draftSegmentId}}
+### 6.1 Удаление сегмента с утверждённым переводом — 409
+DELETE {{baseUrl}}/api/source-segments/{{segmentOneId}}
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
 
-### Удаление проекта вместе с сегментами и переводами
+### 6.2 Удаление утверждённого перевода — 409
+DELETE {{baseUrl}}/api/translations/{{rejectedTranslationId}}
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 6.3 Удаление пользователя, на которого есть ссылки — 409
+DELETE {{baseUrl}}/api/users/1
+Authorization: Basic {{adminUser}}:{{adminPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 6.4 Администратор не может удалить себя — 409
+DELETE {{baseUrl}}/api/users/3
+Authorization: Basic {{adminUser}}:{{adminPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 6.5 Редактор не может удалять пользователей — 403
+DELETE {{baseUrl}}/api/users/{{claraId}}
+Authorization: Basic {{borisUser}}:{{borisPassword}}
+X-XSRF-TOKEN: {{csrf}}
+
+### 6.6 Удаление проекта вместе с сегментами и переводами
 DELETE {{baseUrl}}/api/translation-projects/{{draftProjectId}}
-
-### Пользователь, на которого ещё ссылаются данные — 409
-DELETE {{baseUrl}}/api/users/{{annaId}}
+Authorization: Basic {{annaUser}}:{{annaPassword}}
+X-XSRF-TOKEN: {{csrf}}

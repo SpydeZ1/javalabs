@@ -50,7 +50,6 @@ public class EditorialCommentService {
         Translation translation = translationService.getTranslationById(translationId);
         requireActiveReview(translation);
         if (translation.getStatus() == TranslationStatus.SUBMITTED) {
-            // как и при request-changes: перевод возвращается автору на доработку
             translation.setStatus(TranslationStatus.REJECTED);
         } else if (translation.getStatus() != TranslationStatus.REJECTED) {
             throw new ConflictException("Замечание можно добавить только к переводу на проверке или возвращённому на доработку");

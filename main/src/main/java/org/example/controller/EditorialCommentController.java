@@ -9,6 +9,7 @@ import org.example.model.EditorialComment;
 import org.example.service.EditorialCommentService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,6 +31,7 @@ public class EditorialCommentController {
         this.commentService = commentService;
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping
     public List<EditorialCommentResponse> getAllComments() {
         return commentService.getAllComments().stream()
@@ -37,11 +39,13 @@ public class EditorialCommentController {
                 .toList();
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
     public EditorialCommentResponse getCommentById(@PathVariable Long id) {
         return EditorialCommentMapper.toResponse(commentService.getCommentById(id));
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/translation/{translationId}")
     public List<EditorialCommentResponse> getCommentsByTranslationId(@PathVariable Long translationId) {
         return commentService.getCommentsByTranslationId(translationId).stream()
@@ -49,6 +53,7 @@ public class EditorialCommentController {
                 .toList();
     }
 
+    @PreAuthorize("hasAnyRole('EDITOR', 'ADMIN') and !@access.isAuthor(#request.translationId, principal.id)")
     @PostMapping
     public ResponseEntity<EditorialCommentResponse> createComment(
             @Valid @RequestBody EditorialCommentRequest request) {
@@ -57,6 +62,7 @@ public class EditorialCommentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(EditorialCommentMapper.toResponse(created));
     }
 
+    @PreAuthorize("hasAnyRole('EDITOR', 'ADMIN') and !@access.isAuthorOfCommented(#id, principal.id)")
     @PatchMapping("/{id}")
     public EditorialCommentResponse updateComment(
             @PathVariable Long id,
@@ -64,12 +70,14 @@ public class EditorialCommentController {
         return EditorialCommentMapper.toResponse(commentService.updateComment(id, request));
     }
 
+    @PreAuthorize("hasAnyRole('EDITOR', 'ADMIN') and !@access.isAuthorOfCommented(#id, principal.id)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteComment(@PathVariable Long id) {
         commentService.deleteComment(id);
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasAnyRole('EDITOR', 'ADMIN') or @access.isAuthorOfCommentedOrMissing(#id, principal.id)")
     @PostMapping("/{id}/resolve")
     public EditorialCommentResponse resolve(@PathVariable Long id) {
         return EditorialCommentMapper.toResponse(commentService.resolve(id));

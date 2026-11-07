@@ -1,13 +1,14 @@
 package org.example.dto;
 
-import jakarta.validation.constraints.Size;
-
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import org.example.model.UserRole;
+import org.example.model.UserStatus;
 
 public class UserUpdateRequest {
 
-    @Size(max = 64)
+    @Pattern(regexp = "^[A-Za-z0-9._-]{3,64}$", message = "допустимы 3-64 символа: латинские буквы, цифры, точка, дефис и подчёркивание")
     private String username;
 
     @Email
@@ -15,6 +16,8 @@ public class UserUpdateRequest {
     private String email;
 
     private UserRole role;
+
+    private UserStatus status;
 
     public String getUsername() {
         return username;
@@ -38,5 +41,13 @@ public class UserUpdateRequest {
 
     public void setRole(UserRole role) {
         this.role = role;
+    }
+
+    public UserStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(UserStatus status) {
+        this.status = status;
     }
 }

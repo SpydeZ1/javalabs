@@ -10,4 +10,4 @@ public class App {
         EnvFile.load();
         SpringApplication.run(App.class, args);
     }
-}
+}
