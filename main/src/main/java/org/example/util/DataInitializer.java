@@ -16,9 +16,12 @@ import org.example.repository.TranslationRepository;
 import org.example.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.annotation.Order;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
+@Order(1)
 @ConditionalOnProperty(name = "app.seed", havingValue = "true")
 public class DataInitializer implements CommandLineRunner {
 
@@ -27,22 +30,25 @@ public class DataInitializer implements CommandLineRunner {
     private final SourceSegmentRepository segmentRepository;
     private final TranslationRepository translationRepository;
     private final EditorialCommentRepository commentRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public DataInitializer(UserRepository userRepository,
                            TranslationProjectRepository projectRepository,
                            SourceSegmentRepository segmentRepository,
                            TranslationRepository translationRepository,
-                           EditorialCommentRepository commentRepository) {
+                           EditorialCommentRepository commentRepository,
+                           PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.projectRepository = projectRepository;
         this.segmentRepository = segmentRepository;
         this.translationRepository = translationRepository;
         this.commentRepository = commentRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
     public void run(String... args) {
-        if (userRepository.count() > 0) {
+        if (userRepository.existsByUsername("anna")) {
             return;
         }
 
@@ -50,12 +56,14 @@ public class DataInitializer implements CommandLineRunner {
         anna.setUsername("anna");
         anna.setEmail("anna@studio.local");
         anna.setRole(UserRole.TRANSLATOR);
+        anna.setPasswordHash(passwordEncoder.encode("Anna#Pass123"));
         userRepository.save(anna);
 
         User boris = new User();
         boris.setUsername("boris");
         boris.setEmail("boris@studio.local");
         boris.setRole(UserRole.EDITOR);
+        boris.setPasswordHash(passwordEncoder.encode("Boris#Pass123"));
         userRepository.save(boris);
 
         TranslationProject draft = new TranslationProject();

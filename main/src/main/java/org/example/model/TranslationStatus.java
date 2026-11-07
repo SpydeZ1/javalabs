@@ -5,4 +5,4 @@ public enum TranslationStatus {
     SUBMITTED,
     APPROVED,
     REJECTED
-}
+}

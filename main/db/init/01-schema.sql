@@ -2,11 +2,14 @@ CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
     username VARCHAR(64) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(100) NOT NULL,
     role VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
     version BIGINT NOT NULL DEFAULT 0,
-    CONSTRAINT users_role_check CHECK (role IN ('TRANSLATOR', 'EDITOR'))
+    CONSTRAINT users_role_check CHECK (role IN ('TRANSLATOR', 'EDITOR', 'ADMIN')),
+    CONSTRAINT users_status_check CHECK (status IN ('ACTIVE', 'BLOCKED'))
 );
 
 CREATE TABLE translation_projects (
@@ -56,6 +59,5 @@ CREATE TABLE editorial_comments (
     CONSTRAINT comments_status_check CHECK (status IN ('OPEN', 'RESOLVED'))
 );
 
--- У сегмента может быть не более одного утверждённого перевода
 CREATE UNIQUE INDEX translations_one_approved_per_segment
     ON translations (segment_id) WHERE status = 'APPROVED';

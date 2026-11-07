@@ -39,3 +39,6 @@ build/
 *.jar
 *.war
 *.ear
+
+/postman/
+/.postman/

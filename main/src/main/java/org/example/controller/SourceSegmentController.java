@@ -9,6 +9,7 @@ import org.example.model.SourceSegment;
 import org.example.service.SourceSegmentService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,6 +31,7 @@ public class SourceSegmentController {
         this.segmentService = segmentService;
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping
     public List<SourceSegmentResponse> getAllSegments() {
         return segmentService.getAllSegments().stream()
@@ -37,11 +39,13 @@ public class SourceSegmentController {
                 .toList();
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
     public SourceSegmentResponse getSegmentById(@PathVariable Long id) {
         return SourceSegmentMapper.toResponse(segmentService.getSegmentById(id));
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/project/{projectId}")
     public List<SourceSegmentResponse> getSegmentsByProjectId(@PathVariable Long projectId) {
         return segmentService.getSegmentsByProjectId(projectId).stream()
@@ -49,6 +53,7 @@ public class SourceSegmentController {
                 .toList();
     }
 
+    @PreAuthorize("hasRole('ADMIN') or @access.ownsProject(#request.projectId, principal.id)")
     @PostMapping
     public ResponseEntity<SourceSegmentResponse> createSegment(@Valid @RequestBody SourceSegmentRequest request) {
         SourceSegment created = segmentService.createSegment(
@@ -56,6 +61,7 @@ public class SourceSegmentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(SourceSegmentMapper.toResponse(created));
     }
 
+    @PreAuthorize("hasRole('ADMIN') or @access.ownsSegmentProject(#id, principal.id)")
     @PatchMapping("/{id}")
     public SourceSegmentResponse updateSegment(
             @PathVariable Long id,
@@ -63,6 +69,7 @@ public class SourceSegmentController {
         return SourceSegmentMapper.toResponse(segmentService.updateSegment(id, request));
     }
 
+    @PreAuthorize("hasRole('ADMIN') or @access.ownsSegmentProject(#id, principal.id)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSegment(@PathVariable Long id) {
         segmentService.deleteSegment(id);

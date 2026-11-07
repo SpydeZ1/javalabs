@@ -43,7 +43,7 @@ public class TranslationProjectService {
     }
 
     public TranslationProject createProject(TranslationProject project, Long ownerId) {
-        User owner = userService.getUserById(ownerId);
+        User owner = userService.getActiveUserById(ownerId);
         project.setOwner(owner);
         project.setStatus(ProjectStatus.DRAFT);
         return projectRepository.save(project);
@@ -60,7 +60,7 @@ public class TranslationProjectService {
         }
         TranslationProjectMapper.apply(request, project);
         if (request.getOwnerId() != null) {
-            project.setOwner(userService.getUserById(request.getOwnerId()));
+            project.setOwner(userService.getActiveUserById(request.getOwnerId()));
         }
         return projectRepository.saveAndFlush(project);
     }

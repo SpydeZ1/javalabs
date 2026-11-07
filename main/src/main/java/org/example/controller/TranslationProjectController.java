@@ -9,6 +9,7 @@ import org.example.model.TranslationProject;
 import org.example.service.TranslationProjectService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,6 +31,7 @@ public class TranslationProjectController {
         this.projectService = projectService;
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping
     public List<TranslationProjectResponse> getAllProjects() {
         return projectService.getAllProjects().stream()
@@ -37,11 +39,13 @@ public class TranslationProjectController {
                 .toList();
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
     public TranslationProjectResponse getProjectById(@PathVariable Long id) {
         return TranslationProjectMapper.toResponse(projectService.getProjectById(id));
     }
 
+    @PreAuthorize("hasRole('ADMIN') or #request.ownerId == principal.id")
     @PostMapping
     public ResponseEntity<TranslationProjectResponse> createProject(
             @Valid @RequestBody TranslationProjectRequest request) {
@@ -50,6 +54,8 @@ public class TranslationProjectController {
         return ResponseEntity.status(HttpStatus.CREATED).body(TranslationProjectMapper.toResponse(created));
     }
 
+    @PreAuthorize("hasRole('ADMIN') or (@access.ownsProject(#id, principal.id) "
+            + "and (#request.ownerId == null or #request.ownerId == principal.id))")
     @PatchMapping("/{id}")
     public TranslationProjectResponse updateProject(
             @PathVariable Long id,
@@ -57,17 +63,20 @@ public class TranslationProjectController {
         return TranslationProjectMapper.toResponse(projectService.updateProject(id, request));
     }
 
+    @PreAuthorize("hasRole('ADMIN') or @access.ownsProject(#id, principal.id)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
         projectService.deleteProject(id);
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasRole('ADMIN') or @access.ownsProject(#id, principal.id)")
     @PostMapping("/{id}/start")
     public TranslationProjectResponse startProject(@PathVariable Long id) {
         return TranslationProjectMapper.toResponse(projectService.startProject(id));
     }
 
+    @PreAuthorize("hasRole('ADMIN') or @access.ownsProject(#id, principal.id)")
     @PostMapping("/{id}/complete")
     public TranslationProjectResponse completeProject(@PathVariable Long id) {
         return TranslationProjectMapper.toResponse(projectService.completeProject(id));

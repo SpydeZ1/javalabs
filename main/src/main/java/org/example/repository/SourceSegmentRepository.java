@@ -19,6 +19,8 @@ public interface SourceSegmentRepository extends JpaRepository<SourceSegment, Lo
 
     long countByProject(TranslationProject project);
 
+    boolean existsByIdAndProjectOwnerId(Long id, Long ownerId);
+
     @Query("""
             SELECT COUNT(s) FROM SourceSegment s
             WHERE s.project.id = :projectId

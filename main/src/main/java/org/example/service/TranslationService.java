@@ -61,7 +61,7 @@ public class TranslationService {
         if (translationRepository.existsBySegmentIdAndStatus(segmentId, TranslationStatus.APPROVED)) {
             throw new ConflictException("У сегмента уже есть утверждённый перевод");
         }
-        User author = userService.getUserById(authorId);
+        User author = userService.getActiveUserById(authorId);
         translation.setSegment(segment);
         translation.setAuthor(author);
         translation.setStatus(TranslationStatus.DRAFT);

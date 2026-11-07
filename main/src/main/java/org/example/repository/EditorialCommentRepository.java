@@ -16,6 +16,8 @@ public interface EditorialCommentRepository extends JpaRepository<EditorialComme
 
     boolean existsByTranslationAndStatus(Translation translation, CommentStatus status);
 
+    boolean existsByIdAndTranslationAuthorId(Long id, Long authorId);
+
     @Query("""
             SELECT DISTINCT c FROM EditorialComment c
             JOIN FETCH c.translation t

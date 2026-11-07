@@ -15,6 +15,8 @@ public interface TranslationProjectRepository extends JpaRepository<TranslationP
 
     boolean existsByOwner(User owner);
 
+    boolean existsByIdAndOwnerId(Long id, Long ownerId);
+
     @Query("SELECT DISTINCT p FROM TranslationProject p JOIN FETCH p.owner")
     List<TranslationProject> findAllWithOwner();
 

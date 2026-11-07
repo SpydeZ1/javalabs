@@ -17,6 +17,8 @@ public interface TranslationRepository extends JpaRepository<Translation, Long> 
 
     boolean existsByAuthor(User author);
 
+    boolean existsByIdAndAuthorId(Long id, Long authorId);
+
     boolean existsBySegmentIdAndStatus(Long segmentId, TranslationStatus status);
 
     boolean existsBySegmentIdAndStatusIn(Long segmentId, Collection<TranslationStatus> statuses);
